@@ -9,7 +9,7 @@ services:
     # --include=dev so Vite (a devDependency) installs even with NODE_ENV=production
     buildCommand: npm install --include=dev && npm run build
     startCommand: npm run start
-    healthCheckPath: /api/login
+    healthCheckPath: /api/health
     envVars:
       - key: NODE_ENV
         value: production

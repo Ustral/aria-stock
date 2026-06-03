@@ -27,6 +27,9 @@ const PORT = PROD ? (process.env.PORT || 8787) : (process.env.API_PORT || 8787);
 const publicUser = (u) => ({ id: u.id, username: u.username, name: u.name, title: u.title, role: u.role, branchId: u.branchId, active: u.active !== false });
 const activeHqCount = () => db.users.filter((u) => u.role === "hq" && u.active !== false).length;
 
+/* ---------------- Health check ---------------- */
+app.get("/api/health", (req, res) => res.json({ ok: true, storage: BACKEND }));
+
 /* ---------------- Auth ---------------- */
 app.post("/api/login", (req, res) => {
   const { username, password } = req.body || {};
