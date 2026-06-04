@@ -125,7 +125,35 @@ function buildSeed() {
 let db = null;
 export async function initStore() {
   db = await loadData(buildSeed);
+  await runMigrations();
   return db;
+}
+
+// Ensures data loaded from an old seed is always up-to-date.
+// Safe to run every startup — only patches missing/wrong fields.
+async function runMigrations() {
+  let changed = false;
+
+  // 1. Ensure reference-data keys exist
+  if (!db.categories || !db.categories.length) { db.categories = CATEGORY_OBJS.map(c=>({...c})); changed = true; }
+  if (!db.suppliers || !db.suppliers.length) { db.suppliers = [...SUPPLIERS]; changed = true; }
+  if (!db.locations || !db.locations.length) { db.locations = [...LOCATIONS_SEED]; changed = true; }
+  if (!db.departments || !db.departments.length) { db.departments = [...DEPARTMENTS]; changed = true; }
+
+  // 2. Re-hash demo passwords if they were seeded wrong (one-time fix).
+  //    Only runs if the stored hash does NOT verify — leaves user-changed
+  //    passwords untouched.
+  const DEMO_PASSWORDS = { admin:'admin123', manager:'manager123', silom:'silom123', patong:'patong123', nimman:'nimman123' };
+  for (const u of (db.users||[])) {
+    const expected = DEMO_PASSWORDS[u.username];
+    if (expected && !bcrypt.compareSync(expected, u.password||'')) {
+      u.password = bcrypt.hashSync(expected, 8);
+      console.log('[migrate] fixed password for', u.username);
+      changed = true;
+    }
+  }
+
+  if (changed) { await persistData(db); console.log('[migrate] saved'); }
 }
 
 // Serialized write-through so concurrent saves don't race. Fire-and-forget at
