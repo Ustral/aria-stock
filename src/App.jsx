@@ -14,7 +14,7 @@ import { StockPage, ItemsPage, ItemDetail } from "./pages/Stock.jsx";
 import { ReportPage } from "./pages/Report.jsx";
 import { UsersPage } from "./pages/Users.jsx";
 import { RefDataPage } from "./pages/RefData.jsx";
-import { AddProductModal, AddBranchModal, ConfirmDeleteModal } from "./Admin.jsx";
+import { AddProductModal, AddBranchModal, ConfirmDeleteModal, EditBranchModal, ConfirmDeleteBranchModal } from "./Admin.jsx";
 import { RefDataProvider } from "./refdata.jsx";
 import { useTweaks, TweaksPanel, TweakSection, TweakColor, TweakRadio } from "./TweaksPanel.jsx";
 
@@ -84,6 +84,8 @@ export default function App({ boot, onLogout }) {
   const [quick, setQuick] = React.useState(null); // {mode, presetId}
   const [addProduct, setAddProduct] = React.useState(false);
   const [addBranch, setAddBranch] = React.useState(false);
+  const [editBranch, setEditBranch] = React.useState(null);
+  const [confirmDelBranch, setConfirmDelBranch] = React.useState(null);
   const [confirmDel, setConfirmDel] = React.useState(null);
 
   const currentBranch = branches.find((b) => b.id === branchId) || branches[0];
@@ -225,6 +227,26 @@ export default function App({ boot, onLogout }) {
     },
   };
 
+  const handleEditBranch = async (id, payload) => {
+    try {
+      const r = await api.updateBranch(id, payload);
+      setBranches((prev) => prev.map((b) => (b.id === id ? { ...b, ...r.branch } : b)));
+      setEditBranch(null);
+      toast.success("แก้ไขสาขาแล้ว", `${r.branch.th} (${r.branch.code})`);
+    } catch (e) { toast.error("แก้ไขไม่สำเร็จ", e.message); }
+  };
+
+  const handleDeleteBranch = async (branch) => {
+    try {
+      await api.deleteBranch(branch.id);
+      setBranches((prev) => prev.filter((b) => b.id !== branch.id));
+      setStock((prev) => { const n = { ...prev }; delete n[branch.id]; return n; });
+      if (branchId === branch.id) setBranchId("hq");
+      setConfirmDelBranch(null);
+      toast.error("ลบสาขาแล้ว", `${branch.th} (${branch.code})`);
+    } catch (e) { toast.error("ลบไม่สำเร็จ", e.message); setConfirmDelBranch(null); }
+  };
+
   const onReceive = (item) => { setDetail(null); setQuick({ mode: "in", presetId: item && item.id }); };
   const onIssue = (item) => { setDetail(null); setQuick({ mode: "out", presetId: item && item.id }); };
   const openItem = (it) => setDetail(it);
@@ -243,7 +265,9 @@ export default function App({ boot, onLogout }) {
           onReceive={() => onReceive()} onIssue={() => onIssue()} lowCount={lowCount}
           onBell={() => { setPage("stock"); }}
           branches={branches} branchId={branchId} setBranchId={switchBranch} stock={stock} products={master}
-          onAddBranch={isHQLevel ? () => setAddBranch(true) : null} />
+          onAddBranch={canManageUsers ? () => setAddBranch(true) : null}
+          onEditBranch={canManageUsers ? (b) => setEditBranch(b) : null}
+          onDeleteBranch={canManageUsers ? (b) => setConfirmDelBranch(b) : null} />
         <div className="content">
           <div key={page + ":" + branchId}>
             {page === "dashboard" && <Dashboard items={items} moves={branchMoves} setPage={setPage} openItem={openItem} onReceive={onReceive} onIssue={onIssue} />}
@@ -295,6 +319,9 @@ export default function App({ boot, onLogout }) {
         existingIds={master.map((m) => m.id)} />
       <AddBranchModal open={addBranch} onClose={() => setAddBranch(false)} onSubmit={handleAddBranch}
         existingCodes={branches.map((b) => b.code.toUpperCase())} />
+      <EditBranchModal branch={editBranch} onClose={() => setEditBranch(null)} onSubmit={handleEditBranch}
+        existingCodes={branches.filter((b) => b.id !== editBranch?.id).map((b) => b.code.toUpperCase())} />
+      <ConfirmDeleteBranchModal branch={confirmDelBranch} onClose={() => setConfirmDelBranch(null)} onConfirm={handleDeleteBranch} />
       <ConfirmDeleteModal item={confirmDel} onClose={() => setConfirmDel(null)} onConfirm={handleDeleteProduct} />
 
       <TweaksPanel open={tweaksOpen} onClose={() => setTweaksOpen(false)}>

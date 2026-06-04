@@ -187,7 +187,7 @@ app.delete("/api/products/:id", requireAuth, requireHQLevel, (req, res) => {
 });
 
 /* ---------------- Branches (HQ only) ---------------- */
-app.post("/api/branches", requireAuth, requireHQLevel, (req, res) => {
+app.post("/api/branches", requireAuth, requireUserAdmin, (req, res) => {
   const b = req.body || {};
   const code = String(b.code || "").trim().toUpperCase();
   if (!code) return res.status(400).json({ error: "ระบุรหัสสาขา" });
@@ -204,6 +204,43 @@ app.post("/api/branches", requireAuth, requireHQLevel, (req, res) => {
   db.stock[id] = seed;
   save();
   res.json({ branch, stock: seed });
+});
+
+app.patch("/api/branches/:id", requireAuth, requireUserAdmin, (req, res) => {
+  const branch = db.branches.find((b) => b.id === req.params.id);
+  if (!branch) return res.status(404).json({ error: "ไม่พบสาขา" });
+  if (branch.isHQ) return res.status(400).json({ error: "ไม่สามารถแก้ไขสำนักงานใหญ่ได้" });
+  const b = req.body || {};
+  if (b.code != null) {
+    const newCode = String(b.code).trim().toUpperCase();
+    if (!newCode) return res.status(400).json({ error: "ระบุรหัสสาขา" });
+    if (db.branches.some((x) => x.id !== branch.id && x.code.toUpperCase() === newCode))
+      return res.status(409).json({ error: "รหัสสาขานี้มีอยู่แล้ว" });
+    branch.code = newCode;
+  }
+  if (b.th != null) { if (!String(b.th).trim()) return res.status(400).json({ error: "ระบุชื่อสาขา" }); branch.th = String(b.th).trim(); }
+  if (b.en != null) branch.en = String(b.en).trim() || branch.th;
+  if (b.city != null) branch.city = String(b.city).trim() || "—";
+  save();
+  res.json({ branch });
+});
+
+app.delete("/api/branches/:id", requireAuth, requireUserAdmin, (req, res) => {
+  const id = req.params.id;
+  const branch = db.branches.find((b) => b.id === id);
+  if (!branch) return res.status(404).json({ error: "ไม่พบสาขา" });
+  if (branch.isHQ) return res.status(400).json({ error: "ไม่สามารถลบสำนักงานใหญ่ได้" });
+  // Guard: don't delete if branch has non-zero stock or movement history
+  const hasMoves = db.movements.some((m) => m.branchId === id);
+  const hasStock = Object.values(db.stock[id] || {}).some((q) => q > 0);
+  if (hasMoves || hasStock)
+    return res.status(409).json({ error: `ลบไม่ได้ — สาขานี้มีประวัติการเคลื่อนไหวหรือสต๊อกคงเหลืออยู่` });
+  db.branches = db.branches.filter((b) => b.id !== id);
+  delete db.stock[id];
+  // Also deactivate users bound to this branch
+  db.users.forEach((u) => { if (u.branchId === id) u.active = false; });
+  save();
+  res.json({ ok: true, id });
 });
 
 /* ---------------- Reference data: Categories (HQ-level) ---------------- */

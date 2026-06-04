@@ -160,7 +160,7 @@ export function Sidebar({ page, setPage, lowCount, onOpenTweaks, me, onLogout })
 }
 
 /* ---------------- Branch switcher ---------------- */
-export function BranchSwitcher({ branches, branchId, setBranchId, stock, products, onAddBranch }) {
+export function BranchSwitcher({ branches, branchId, setBranchId, stock, products, onAddBranch, onEditBranch, onDeleteBranch }) {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
   useEffect(() => {
@@ -175,7 +175,8 @@ export function BranchSwitcher({ branches, branchId, setBranchId, stock, product
     (products || []).forEach((it) => { const q = s[it.id] ?? 0; units += q; if (I.statusOf({ ...it, qty: q }) !== "ok") low++; });
     return { units, low };
   };
-  const single = branches.length <= 1 && !onAddBranch;
+  const isAdmin = !!(onAddBranch || onEditBranch);
+  const single = branches.length <= 1 && !isAdmin;
 
   return (
     <div ref={ref} style={{ position: "relative", flex: "0 0 auto" }}>
@@ -188,27 +189,45 @@ export function BranchSwitcher({ branches, branchId, setBranchId, stock, product
         {!single && <Icon name="chevronDown" size={15} color="var(--text-3)" style={{ transition: "transform .2s", transform: open ? "rotate(180deg)" : "none" }} />}
       </button>
       {open && !single && (
-        <div className="card" style={{ position: "absolute", top: "calc(100% + 8px)", left: 0, width: 320, zIndex: 60, boxShadow: "var(--sh-lg)", overflow: "hidden", animation: "popIn .2s ease both" }}>
+        <div className="card" style={{ position: "absolute", top: "calc(100% + 8px)", left: 0, width: 340, zIndex: 60, boxShadow: "var(--sh-lg)", overflow: "hidden", animation: "popIn .2s ease both" }}>
           <div className="nav-label" style={{ color: "var(--text-3)", padding: "12px 14px 6px" }}>เลือกสาขา · Switch branch</div>
           <div style={{ maxHeight: 360, overflowY: "auto", padding: "0 8px 8px" }}>
             {branches.map((b) => {
               const st = statsFor(b);
               const active = b.id === branchId;
               return (
-                <button key={b.id} type="button" className="branch-row" data-on={active ? "1" : "0"}
-                  onClick={() => { setBranchId(b.id); setOpen(false); }}>
-                  <span className="branch-ico" style={{ background: b.isHQ ? "var(--primary-soft)" : "var(--surface-3)", color: b.isHQ ? "var(--primary)" : "var(--text-2)" }}>
-                    <Icon name={b.isHQ ? "warehouse" : "building"} size={16} />
-                  </span>
-                  <span style={{ flex: 1, minWidth: 0 }}>
-                    <span className="row" style={{ gap: 7 }}>
-                      <span style={{ fontSize: 13.5, fontWeight: 600 }}>{b.th}</span>
-                      {b.isHQ && <span className="badge primary" style={{ padding: "1px 7px", fontSize: 10 }}>HQ</span>}
+                <div key={b.id} className="row" style={{ gap: 4, padding: "2px 0" }}>
+                  <button type="button" className="branch-row" data-on={active ? "1" : "0"} style={{ flex: 1 }}
+                    onClick={() => { setBranchId(b.id); setOpen(false); }}>
+                    <span className="branch-ico" style={{ background: b.isHQ ? "var(--primary-soft)" : "var(--surface-3)", color: b.isHQ ? "var(--primary)" : "var(--text-2)" }}>
+                      <Icon name={b.isHQ ? "warehouse" : "building"} size={16} />
                     </span>
-                    <span className="muted-3" style={{ fontSize: 11.5 }}>{b.city} · {I.fmt(st.units)} หน่วย{st.low > 0 ? " · ใกล้หมด " + st.low : ""}</span>
-                  </span>
-                  {active && <Icon name="check" size={16} color="var(--primary)" stroke={2.6} />}
-                </button>
+                    <span style={{ flex: 1, minWidth: 0 }}>
+                      <span className="row" style={{ gap: 7 }}>
+                        <span style={{ fontSize: 13.5, fontWeight: 600 }}>{b.th}</span>
+                        {b.isHQ && <span className="badge primary" style={{ padding: "1px 7px", fontSize: 10 }}>HQ</span>}
+                      </span>
+                      <span className="muted-3" style={{ fontSize: 11.5 }}>{b.city} · {I.fmt(st.units)} หน่วย{st.low > 0 ? " · ใกล้หมด " + st.low : ""}</span>
+                    </span>
+                    {active && <Icon name="check" size={16} color="var(--primary)" stroke={2.6} />}
+                  </button>
+                  {isAdmin && !b.isHQ && (
+                    <div className="row" style={{ gap: 2, flex: "0 0 auto", paddingRight: 4 }}>
+                      {onEditBranch && (
+                        <button className="icon-btn" style={{ width: 30, height: 30 }} title="แก้ไข"
+                          onClick={(e) => { e.stopPropagation(); setOpen(false); onEditBranch(b); }}>
+                          <Icon name="edit" size={14} />
+                        </button>
+                      )}
+                      {onDeleteBranch && (
+                        <button className="icon-btn" style={{ width: 30, height: 30, color: "var(--red)" }} title="ลบสาขา"
+                          onClick={(e) => { e.stopPropagation(); setOpen(false); onDeleteBranch(b); }}>
+                          <Icon name="trash" size={14} />
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </div>
               );
             })}
           </div>
@@ -257,14 +276,14 @@ export function ModalHeader({ icon, iconBg, iconFg, title, sub, onClose }) {
 }
 
 /* ---------------- TopBar ---------------- */
-export function TopBar({ title, subtitle, search, setSearch, onReceive, onIssue, lowCount, onBell, branches, branchId, setBranchId, stock, products, onAddBranch }) {
+export function TopBar({ title, subtitle, search, setSearch, onReceive, onIssue, lowCount, onBell, branches, branchId, setBranchId, stock, products, onAddBranch, onEditBranch, onDeleteBranch }) {
   return (
     <header className="topbar">
       <div style={{ minWidth: 0, flex: "1 1 auto", overflow: "hidden" }}>
         <div className="h2" style={{ lineHeight: 1.1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{title}</div>
         {subtitle && <div className="muted" style={{ fontSize: 13, marginTop: 2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{subtitle}</div>}
       </div>
-      {branches && <BranchSwitcher branches={branches} branchId={branchId} setBranchId={setBranchId} stock={stock} products={products} onAddBranch={onAddBranch} />}
+      {branches && <BranchSwitcher branches={branches} branchId={branchId} setBranchId={setBranchId} stock={stock} products={products} onAddBranch={onAddBranch} onEditBranch={onEditBranch} onDeleteBranch={onDeleteBranch} />}
       <div style={{ marginLeft: "auto", flex: "0 0 auto" }} className="row">
         <div className="search">
           <Icon name="search" size={17} />

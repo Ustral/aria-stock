@@ -141,6 +141,79 @@ export function AddBranchModal({ open, onClose, onSubmit, existingCodes }) {
   );
 }
 
+/* ---------------- Edit branch ---------------- */
+export function EditBranchModal({ branch, onClose, onSubmit, existingCodes }) {
+  const [f, setF] = React.useState({ code: "", th: "", en: "", city: "" });
+  const [touched, setTouched] = React.useState(false);
+  React.useEffect(() => { if (branch) { setF({ code: branch.code, th: branch.th, en: branch.en, city: branch.city || "" }); setTouched(false); } }, [branch]);
+  const set = (k, v) => setF((p) => ({ ...p, [k]: v }));
+
+  const newCode = f.code.trim().toUpperCase();
+  const dupCode = newCode && newCode !== branch?.code?.toUpperCase() && existingCodes.includes(newCode);
+  const errCode = touched && (!newCode ? "ระบุรหัสสาขา" : dupCode ? "รหัสนี้มีอยู่แล้ว" : null);
+  const errName = touched && !f.th.trim() ? "ระบุชื่อสาขา" : null;
+  const canSubmit = newCode && f.th.trim() && !dupCode;
+
+  const submit = (e) => {
+    e.preventDefault(); setTouched(true);
+    if (!canSubmit) return;
+    onSubmit(branch.id, { code: newCode, th: f.th.trim(), en: f.en.trim() || f.th.trim(), city: f.city.trim() || "—" });
+  };
+
+  return (
+    <Modal open={!!branch} onClose={onClose} width={480}>
+      {branch && (
+        <>
+          <ModalHeader icon="building" title="แก้ไขข้อมูลสาขา" sub={`Edit branch · ${branch.th}`} onClose={onClose} />
+          <form onSubmit={submit} className="col" style={{ gap: 15, padding: 22 }}>
+            <Field label="รหัสสาขา · Branch code" req error={errCode}>
+              <input className={"input mono" + (errCode ? " err" : "")} value={f.code} onChange={(e) => set("code", e.target.value)} />
+            </Field>
+            <Field label="ชื่อสาขา (ไทย)" req error={errName}>
+              <input className={"input" + (errName ? " err" : "")} value={f.th} onChange={(e) => set("th", e.target.value)} />
+            </Field>
+            <div className="grid-2">
+              <Field label="ชื่อสาขา (อังกฤษ)">
+                <input className="input" value={f.en} onChange={(e) => set("en", e.target.value)} />
+              </Field>
+              <Field label="จังหวัด / เมือง">
+                <input className="input" value={f.city} onChange={(e) => set("city", e.target.value)} />
+              </Field>
+            </div>
+            <div className="row" style={{ gap: 12, marginTop: 4 }}>
+              <button type="button" className="btn btn-ghost" style={{ flex: 1, justifyContent: "center" }} onClick={onClose}>ยกเลิก</button>
+              <button type="submit" className="btn btn-primary" style={{ flex: 1, justifyContent: "center" }} disabled={!canSubmit}><Icon name="check" size={17} />บันทึกการแก้ไข</button>
+            </div>
+          </form>
+        </>
+      )}
+    </Modal>
+  );
+}
+
+/* ---------------- Confirm delete branch ---------------- */
+export function ConfirmDeleteBranchModal({ branch, onClose, onConfirm }) {
+  return (
+    <Modal open={!!branch} onClose={onClose} width={440}>
+      {branch && (
+        <>
+          <ModalHeader icon="trash" iconBg="var(--red-soft)" iconFg="var(--red)" title="ลบสาขา" sub={branch.th} onClose={onClose} />
+          <div className="col" style={{ gap: 16, padding: 22 }}>
+            <div className="muted" style={{ fontSize: 14, lineHeight: 1.6 }}>
+              ต้องการลบ <b style={{ color: "var(--text)" }}>{branch.th}</b> <span className="mono muted-3">({branch.code})</span> ใช่หรือไม่?<br />
+              <span style={{ color: "var(--amber)", fontSize: 13 }}>สาขาที่มีสต๊อกคงเหลือหรือประวัติการเคลื่อนไหว ลบไม่ได้</span>
+            </div>
+            <div className="row" style={{ gap: 12 }}>
+              <button type="button" className="btn btn-ghost" style={{ flex: 1, justifyContent: "center" }} onClick={onClose}>ยกเลิก</button>
+              <button type="button" className="btn btn-danger" style={{ flex: 1, justifyContent: "center" }} onClick={() => onConfirm(branch)}><Icon name="trash" size={16} />ลบสาขา</button>
+            </div>
+          </div>
+        </>
+      )}
+    </Modal>
+  );
+}
+
 /* ---------------- Confirm delete product ---------------- */
 export function ConfirmDeleteModal({ item, onClose, onConfirm }) {
   return (
