@@ -1,0 +1,34 @@
+name: Deploy to Render
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Render deploy
+        run: |
+          RESPONSE=$(curl -s -w "\n%{http_code}" -X POST \
+            "https://api.render.com/v1/services/${{ secrets.RENDER_SERVICE_ID }}/deploys" \
+            -H "Authorization: Bearer ${{ secrets.RENDER_API_KEY }}" \
+            -H "Content-Type: application/json" \
+            -d '{"clearCache":"do_not_clear"}')
+          HTTP_CODE=$(echo "$RESPONSE" | tail -1)
+          BODY=$(echo "$RESPONSE" | head -1)
+          echo "HTTP: $HTTP_CODE"
+          echo "Response: $BODY"
+          if [ "$HTTP_CODE" != "200" ] && [ "$HTTP_CODE" != "201" ]; then
+            echo "Deploy trigger failed"
+            exit 1
+          fi
+          echo "Deploy triggered successfully"
+
+      - name: Wait and verify
+        run: |
+          echo "Waiting 3 min for build..."
+          sleep 180
+          STATUS=$(curl -s https://aria-stock.onrender.com/api/health)
+          echo "Health: $STATUS"
+          echo "$STATUS" | grep -q '"ok":true' && echo "Production is live!" || echo "Warning: health check failed"
