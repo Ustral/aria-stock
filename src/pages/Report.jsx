@@ -8,6 +8,34 @@ import { AreaChart } from "../charts.jsx";
 import { StatCard, SectionHead, ItemThumb } from "../components.jsx";
 import { useRefData } from "../refdata.jsx";
 
+function exportCSV(rows, range, type, cat) {
+  // BOM for Excel Thai UTF-8
+  const BOM = "﻿";
+  const esc = (v) => `"${String(v ?? "").replace(/"/g, '""')}"`;
+  const header = ["วันที่", "เวลา", "ประเภท", "SKU", "ชื่อสินค้า (ไทย)", "ชื่อสินค้า (EN)", "หมวด", "จำนวน", "หน่วย", "เลขที่อ้างอิง", "คู่ค้า / แผนก", "ผู้ทำรายการ"];
+  const lines = [header.map(esc).join(",")];
+  rows.forEach((m) => {
+    const typeLabel = m.type === "in" ? "รับเข้า" : "จ่ายออก";
+    lines.push([
+      RD.fmtDate(m.date), RD.fmtTime(m.ts), typeLabel,
+      m.sku, m.nameTh, m.nameEn, m.cat,
+      m.type === "out" ? -m.qty : m.qty, m.unit,
+      m.ref, m.party, m.by,
+    ].map(esc).join(","));
+  });
+  const csv = BOM + lines.join("\r\n");
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  const typeLabel = type === "all" ? "ทั้งหมด" : type === "in" ? "รับเข้า" : "จ่ายออก";
+  a.download = `aria-stock_movement_${range}วัน_${typeLabel}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
 export function ReportPage({ items, moves, search, toast }) {
   const { categories } = useRefData();
   const [type, setType] = React.useState("all");
@@ -66,7 +94,10 @@ export function ReportPage({ items, moves, search, toast }) {
           </div>
           <div className="wrap-gap">
             {[7, 14, 30, 60].map((r) => <button key={r} className={"chip" + (range === r ? " active" : "")} onClick={() => setRange(r)}>{r} วัน</button>)}
-            <button className="btn btn-soft btn-sm" onClick={() => toast.success("ส่งออกรายงานแล้ว", filtered.length + " รายการ · ไฟล์ CSV")}><Icon name="download" size={15} />ส่งออก</button>
+            <button className="btn btn-soft btn-sm" onClick={() => {
+              exportCSV(filtered, range, type, cat);
+              toast.success("ดาวน์โหลดแล้ว", `${filtered.length} รายการ · CSV`);
+            }}><Icon name="download" size={15} />ส่งออก CSV</button>
           </div>
         </div>
 
