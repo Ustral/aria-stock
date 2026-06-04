@@ -18,7 +18,8 @@ const CATEGORY_OBJS = [
 ];
 const SUPPLIERS = ["Siam Linen Co.", "Bangkok Amenities", "Hospitality Supply Ltd.", "PureCare Trading", "Thai Comfort Goods"];
 const LOCATIONS = ["Store A-01", "Store A-02", "Store B-03", "Store B-05", "Store C-01", "Cold Store"];
-const DEPARTMENTS = ["Housekeeping", "Front Office", "F&B / Banquet", "Spa & Wellness", "Engineering"];
+const DEPARTMENTS = ["Housekeeping", "Front Office", "F&B / Banquet", "Spa & Wellness", "Engineering", "Maintenance"];
+const LOCATIONS_SEED = ["Store A-01", "Store A-02", "Store B-03", "Store B-05", "Store C-01", "Cold Store"];
 
 const BRANCHES_SEED = [
   { id: "hq", code: "HQ", th: "สำนักงานใหญ่", en: "Head Office", city: "กรุงเทพฯ", isHQ: true },
@@ -116,7 +117,8 @@ function buildSeed() {
 
   return {
     branches: BRANCHES_SEED.map((b) => ({ ...b })), products, stock, movements, users,
-    categories: CATEGORY_OBJS.map((c) => ({ ...c })), suppliers: [...SUPPLIERS], locations: [...LOCATIONS],
+    categories: CATEGORY_OBJS.map((c) => ({ ...c })), suppliers: [...SUPPLIERS],
+    locations: [...LOCATIONS_SEED], departments: [...DEPARTMENTS],
   };
 }
 
@@ -134,4 +136,4 @@ export function save() {
   return chain;
 }
 
-export const META = { CATEGORIES: CATEGORY_OBJS, SUPPLIERS, LOCATIONS, DEPARTMENTS, NAMES };
+export const META = { CATEGORIES: CATEGORY_OBJS, SUPPLIERS, LOCATIONS: LOCATIONS_SEED, DEPARTMENTS, NAMES };

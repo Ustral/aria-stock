@@ -34,7 +34,7 @@ export function AddProductModal({ open, onClose, onSubmit, existingIds }) {
   return (
     <Modal open={open} onClose={onClose} width={560}>
       <ModalHeader icon="box" title="เพิ่มสินค้าใหม่" sub="Add product · เพิ่มเข้าแคตตาล็อกกลาง (ทุกสาขา)" onClose={onClose} />
-      <form onSubmit={submit} className="col" style={{ gap: 15, padding: 22 }}>
+      <form onSubmit={submit} className="col" style={{ gap: 15, padding: 22, overflowY: "auto", maxHeight: "calc(100vh - 140px)" }}>
         <div className="grid-2">
           <Field label="SKU / รหัสสินค้า" req error={errSku}>
             <input className="input mono" placeholder="เช่น LN-2099" value={f.sku} onChange={(e) => set("sku", e.target.value)} style={errSku ? { borderColor: "var(--red)" } : null} />

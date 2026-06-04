@@ -46,4 +46,7 @@ export const api = {
   addLocation: (name) => request("POST", "/api/locations", { name }),
   renameLocation: (from, to) => request("PATCH", "/api/locations", { from, to }),
   deleteLocation: (name) => request("DELETE", `/api/locations/${encodeURIComponent(name)}`),
+  addDepartment: (name) => request("POST", "/api/departments", { name }),
+  renameDepartment: (from, to) => request("PATCH", "/api/departments", { from, to }),
+  deleteDepartment: (name) => request("DELETE", `/api/departments/${encodeURIComponent(name)}`),
 };

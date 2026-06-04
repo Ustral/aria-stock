@@ -116,6 +116,7 @@ app.get("/api/bootstrap", requireAuth, (req, res) => {
   res.json({
     me, branches, products: db.products, stock, movements,
     categories: db.categories, suppliers: db.suppliers, locations: db.locations,
+    departments: db.departments || [],
     today: APP_TODAY.toISOString().slice(0, 10),
   });
 });
@@ -281,6 +282,39 @@ function makeListRoutes(key, field, label) {
 }
 makeListRoutes("suppliers", "supplier", "ผู้จำหน่าย");
 makeListRoutes("locations", "loc", "ที่จัดเก็บ");
+
+/* Departments don't map to a product field — no cascade needed; just guard in-use via movements */
+app.post("/api/departments", requireAuth, requireHQLevel, (req, res) => {
+  const name = String((req.body || {}).name || "").trim();
+  if (!name) return res.status(400).json({ error: "ระบุชื่อแผนก" });
+  if (!db.departments) db.departments = [];
+  if (db.departments.some((x) => x.toLowerCase() === name.toLowerCase())) return res.status(409).json({ error: "ชื่อแผนกนี้มีอยู่แล้ว" });
+  db.departments.push(name); save();
+  res.json({ name });
+});
+app.patch("/api/departments", requireAuth, requireHQLevel, (req, res) => {
+  const b = req.body || {};
+  const from = String(b.from || "").trim(), to = String(b.to || "").trim();
+  if (!db.departments) db.departments = [];
+  const i = db.departments.indexOf(from);
+  if (i < 0) return res.status(404).json({ error: "ไม่พบแผนก" });
+  if (!to) return res.status(400).json({ error: "ระบุชื่อใหม่" });
+  if (to !== from && db.departments.some((x) => x.toLowerCase() === to.toLowerCase())) return res.status(409).json({ error: "ชื่อแผนกนี้มีอยู่แล้ว" });
+  db.departments[i] = to;
+  // Cascade rename in movement history (party field for "out" movements)
+  db.movements.forEach((m) => { if (m.type === "out" && m.party === from) m.party = to; });
+  save();
+  res.json({ from, to });
+});
+app.delete("/api/departments/:name", requireAuth, requireHQLevel, (req, res) => {
+  const name = req.params.name;
+  if (!db.departments) db.departments = [];
+  if (!db.departments.includes(name)) return res.status(404).json({ error: "ไม่พบแผนก" });
+  const used = db.movements.filter((m) => m.type === "out" && m.party === name).length;
+  if (used > 0) return res.status(409).json({ error: `ลบไม่ได้ — มีประวัติการจ่ายออกให้แผนกนี้ ${used} รายการ` });
+  db.departments = db.departments.filter((x) => x !== name); save();
+  res.json({ ok: true, name });
+});
 
 /* ---------------- Serve the built SPA (single-service production) ---------------- */
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");

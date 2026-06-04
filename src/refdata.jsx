@@ -6,22 +6,23 @@
    ============================================================ */
 import React from "react";
 
-const RefDataCtx = React.createContext({ categories: [], suppliers: [], locations: [], catOf: () => fallbackCat("?") });
+const RefDataCtx = React.createContext({ categories: [], suppliers: [], locations: [], departments: [], catOf: () => fallbackCat("?") });
 
 function fallbackCat(id) {
   return { id, th: id || "—", en: id || "—", color: "#8b95a4", soft: "rgba(139,149,164,0.12)", icon: "📦" };
 }
 
-export function RefDataProvider({ categories, suppliers, locations, children }) {
+export function RefDataProvider({ categories, suppliers, locations, departments, children }) {
   const value = React.useMemo(() => {
     const map = new Map((categories || []).map((c) => [c.id, c]));
     return {
       categories: categories || [],
       suppliers: suppliers || [],
       locations: locations || [],
+      departments: departments || [],
       catOf: (id) => map.get(id) || fallbackCat(id),
     };
-  }, [categories, suppliers, locations]);
+  }, [categories, suppliers, locations, departments]);
   return <RefDataCtx.Provider value={value}>{children}</RefDataCtx.Provider>;
 }
 

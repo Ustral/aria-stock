@@ -84,12 +84,15 @@ function NameModal({ state, onClose, onSubmit }) {
   if (!state) return <Modal open={false} onClose={onClose}>{null}</Modal>;
   const editing = state.mode === "rename";
   const err = touched && !v.trim() ? "ระบุชื่อ" : null;
+  const kindLabel = state.kind === "supplier" ? "ผู้จำหน่าย" : state.kind === "location" ? "ที่จัดเก็บ" : "แผนก";
+  const kindIcon = state.kind === "supplier" ? "truck" : state.kind === "location" ? "pin" : "users";
+  const placeholder = state.kind === "supplier" ? "เช่น Lotus Supply" : state.kind === "location" ? "เช่น Store D-01" : "เช่น F&B / Restaurant";
   return (
     <Modal open={open} onClose={onClose} width={420}>
-      <ModalHeader icon={state.kind === "supplier" ? "truck" : "pin"} title={(editing ? "แก้ไข" : "เพิ่ม") + (state.kind === "supplier" ? "ผู้จำหน่าย" : "ที่จัดเก็บ")} onClose={onClose} />
+      <ModalHeader icon={kindIcon} title={(editing ? "แก้ไข" : "เพิ่ม") + kindLabel} onClose={onClose} />
       <form onSubmit={(e) => { e.preventDefault(); setTouched(true); if (v.trim()) onSubmit(editing, v.trim()); }} className="col" style={{ gap: 15, padding: 22 }}>
         <Field label="ชื่อ · Name" req error={err}>
-          <input className={"input" + (err ? " err" : "")} autoFocus value={v} onChange={(e) => setV(e.target.value)} placeholder={state.kind === "supplier" ? "เช่น Lotus Supply" : "เช่น Store D-01"} />
+          <input className={"input" + (err ? " err" : "")} autoFocus value={v} onChange={(e) => setV(e.target.value)} placeholder={placeholder} />
         </Field>
         <div className="row" style={{ gap: 12 }}>
           <button type="button" className="btn btn-ghost" style={{ flex: 1, justifyContent: "center" }} onClick={onClose}>ยกเลิก</button>
@@ -134,7 +137,9 @@ function ListCard({ title, sub, icon, items, countOf, onAdd, onRename, onDelete 
                 <div className="muted-3" style={{ fontSize: 12 }}>{n > 0 ? `ใช้กับสินค้า ${n} รายการ` : "ยังไม่ถูกใช้งาน"}</div>
               </div>
               <button className="icon-btn" style={{ width: 34, height: 34 }} title="แก้ไข" onClick={() => onRename(name)}><Icon name="edit" size={15} /></button>
-              <button className="icon-btn" style={{ width: 34, height: 34, color: "var(--red)" }} title="ลบ" disabled={n > 0} onClick={() => onDelete(name)}><Icon name="trash" size={15} /></button>
+              <button className="icon-btn" style={{ width: 34, height: 34, color: n > 0 ? "var(--text-3)" : "var(--red)", cursor: n > 0 ? "not-allowed" : "pointer" }}
+                title={n > 0 ? `ลบไม่ได้ — ใช้กับสินค้า ${n} รายการ` : "ลบ"}
+                onClick={() => n === 0 && onDelete(name)}><Icon name="trash" size={15} /></button>
             </div>
           );
         })}
@@ -145,7 +150,7 @@ function ListCard({ title, sub, icon, items, countOf, onAdd, onRename, onDelete 
 }
 
 export function RefDataPage({ products, ops, toast }) {
-  const { categories, suppliers, locations } = useRefData();
+  const { categories, suppliers, locations, departments } = useRefData();
   const [catModal, setCatModal] = React.useState(null);
   const [nameModal, setNameModal] = React.useState(null);
   const [confirm, setConfirm] = React.useState(null);
@@ -153,6 +158,7 @@ export function RefDataPage({ products, ops, toast }) {
   const catCount = (id) => products.filter((p) => p.cat === id).length;
   const supCount = (n) => products.filter((p) => p.supplier === n).length;
   const locCount = (n) => products.filter((p) => p.loc === n).length;
+  const deptCount = () => 0; // departments don't map to products, guard via movement history
 
   const submitCat = async (editing, payload) => {
     try { editing ? await ops.updateCategory(payload.id, payload) : await ops.addCategory(payload); setCatModal(null); } catch { /* toast in App */ }
@@ -161,7 +167,8 @@ export function RefDataPage({ products, ops, toast }) {
     const kind = nameModal.kind;
     try {
       if (kind === "supplier") editing ? await ops.renameSupplier(nameModal.value, value) : await ops.addSupplier(value);
-      else editing ? await ops.renameLocation(nameModal.value, value) : await ops.addLocation(value);
+      else if (kind === "location") editing ? await ops.renameLocation(nameModal.value, value) : await ops.addLocation(value);
+      else editing ? await ops.renameDepartment(nameModal.value, value) : await ops.addDepartment(value);
       setNameModal(null);
     } catch { /* toast in App */ }
   };
@@ -205,6 +212,12 @@ export function RefDataPage({ products, ops, toast }) {
             onAdd={() => setNameModal({ kind: "location", mode: "add" })}
             onRename={(name) => setNameModal({ kind: "location", mode: "rename", value: name })}
             onDelete={(name) => setConfirm({ label: `ที่จัดเก็บ "${name}"`, onConfirm: doDelete(ops.deleteLocation, name) })} />
+          <ListCard title="แผนก / ปลายทาง · Departments" sub={departments.length + " แผนก"} icon="users" items={departments}
+            countOf={() => 0}
+            deleteTooltip="ลบได้เฉพาะแผนกที่ยังไม่มีประวัติการจ่ายออก"
+            onAdd={() => setNameModal({ kind: "department", mode: "add" })}
+            onRename={(name) => setNameModal({ kind: "department", mode: "rename", value: name })}
+            onDelete={(name) => setConfirm({ label: `แผนก "${name}"`, onConfirm: doDelete(ops.deleteDepartment, name) })} />
         </div>
       </div>
 

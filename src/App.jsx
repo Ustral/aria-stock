@@ -78,6 +78,7 @@ export default function App({ boot, onLogout }) {
   const [categories, setCategories] = React.useState(() => (boot.categories || []).map((x) => ({ ...x })));
   const [suppliers, setSuppliers] = React.useState(() => [...(boot.suppliers || [])]);
   const [locations, setLocations] = React.useState(() => [...(boot.locations || [])]);
+  const [departments, setDepartments] = React.useState(() => [...(boot.departments || [])]);
   const [search, setSearch] = React.useState("");
   const [detail, setDetail] = React.useState(null);
   const [quick, setQuick] = React.useState(null); // {mode, presetId}
@@ -210,6 +211,18 @@ export default function App({ boot, onLogout }) {
       try { await api.deleteLocation(name); setLocations((prev) => prev.filter((s) => s !== name)); toast.error("ลบที่จัดเก็บแล้ว", name); }
       catch (e) { toast.error("ลบไม่สำเร็จ", e.message); throw e; }
     },
+    addDepartment: async (name) => {
+      try { const r = await api.addDepartment(name); setDepartments((prev) => [...prev, r.name]); toast.success("เพิ่มแผนกแล้ว", r.name); }
+      catch (e) { toast.error("เพิ่มไม่สำเร็จ", e.message); throw e; }
+    },
+    renameDepartment: async (from, to) => {
+      try { await api.renameDepartment(from, to); setDepartments((prev) => prev.map((s) => (s === from ? to : s))); setMoves((prev) => prev.map((m) => (m.type === "out" && m.party === from ? { ...m, party: to } : m))); toast.success("แก้ไขแผนกแล้ว", `${from} → ${to}`); }
+      catch (e) { toast.error("แก้ไขไม่สำเร็จ", e.message); throw e; }
+    },
+    deleteDepartment: async (name) => {
+      try { await api.deleteDepartment(name); setDepartments((prev) => prev.filter((s) => s !== name)); toast.error("ลบแผนกแล้ว", name); }
+      catch (e) { toast.error("ลบไม่สำเร็จ", e.message); throw e; }
+    },
   };
 
   const onReceive = (item) => { setDetail(null); setQuick({ mode: "in", presetId: item && item.id }); };
@@ -221,7 +234,7 @@ export default function App({ boot, onLogout }) {
   const subtitle = `${meta.en} · ${currentBranch.th}${currentBranch.isHQ ? " (HQ)" : ""}`;
 
   return (
-   <RefDataProvider categories={categories} suppliers={suppliers} locations={locations}>
+   <RefDataProvider categories={categories} suppliers={suppliers} locations={locations} departments={departments}>
     <div className="app">
       <Sidebar page={page} setPage={(p) => { setPage(p); setSearch(""); }} lowCount={lowCount}
         onOpenTweaks={() => setTweaksOpen(true)} me={me} onLogout={onLogout} />

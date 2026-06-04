@@ -67,10 +67,11 @@ export function ItemPicker({ items, value, onChange, placeholder = "เลือ
 /* ---- Shared form ---- */
 export function StockForm({ mode, items, onSubmit, presetId, compact }) {
   const isIn = mode === "in";
-  const { suppliers } = useRefData();
+  const { suppliers, departments } = useRefData();
+  const depts = departments.length ? departments : FD.DEPARTMENTS; // fallback if context not ready
   const [itemId, setItemId] = React.useState(presetId || "");
   const [qty, setQty] = React.useState(0);
-  const [party, setParty] = React.useState(isIn ? (suppliers[0] || "") : FD.DEPARTMENTS[0]);
+  const [party, setParty] = React.useState(isIn ? (suppliers[0] || "") : (depts[0] || ""));
   const [ref, setRef] = React.useState("");
   const [note, setNote] = React.useState("");
   const [touched, setTouched] = React.useState(false);
@@ -129,7 +130,7 @@ export function StockForm({ mode, items, onSubmit, presetId, compact }) {
 
       <Field label={isIn ? "ผู้จำหน่าย · Supplier" : "แผนก / ปลายทาง · Department"} req>
         <select className="input" value={party} onChange={(e) => setParty(e.target.value)}>
-          {(isIn ? suppliers : FD.DEPARTMENTS).map((s) => <option key={s}>{s}</option>)}
+          {(isIn ? suppliers : depts).map((s) => <option key={s}>{s}</option>)}
         </select>
       </Field>
 
