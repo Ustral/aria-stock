@@ -8,12 +8,41 @@ import { Donut } from "../charts.jsx";
 import { ItemThumb, StatusBadge, SectionHead } from "../components.jsx";
 import { useRefData } from "../refdata.jsx";
 
+function exportStockCSV(rows, catOf) {
+  const BOM = "﻿";
+  const esc = (v) => `"${String(v ?? "").replace(/"/g, '""')}"`;
+  const STATUS_LABEL = { ok: "ปกติ", low: "ใกล้หมด", out: "หมดสต๊อก" };
+  const header = ["SKU", "ชื่อสินค้า (ไทย)", "ชื่อสินค้า (EN)", "หมวด", "หน่วย", "คงเหลือ", "par", "จุดสั่งซื้อ", "% ของ par", "ที่จัดเก็บ", "ต้นทุน/หน่วย (฿)", "มูลค่ารวม (฿)", "ผู้จำหน่าย", "สถานะ"];
+  const lines = [header.map(esc).join(",")];
+  rows.forEach((it) => {
+    const cat = catOf(it.cat);
+    const pct = Math.min(100, Math.round((it.qty / it.par) * 100));
+    const status = SD.statusOf(it);
+    lines.push([
+      it.sku, it.nameTh, it.nameEn, cat.th, it.unit,
+      it.qty, it.par, it.reorder, pct + "%",
+      it.loc, it.cost, it.qty * it.cost, it.supplier,
+      STATUS_LABEL[status] || status,
+    ].map(esc).join(","));
+  });
+  const csv = BOM + lines.join("\r\n");
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `aria-stock_stock-on-hand_${new Date().toISOString().slice(0,10)}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
 function Filters({ items, cat, setCat, status, setStatus }) {
   const { categories } = useRefData();
   const counts = { all: items.length, ok: 0, low: 0, out: 0 };
   items.forEach((it) => { counts[SD.statusOf(it)]++; });
   return (
-    <div className="spread" style={{ marginBottom: 16, flexWrap: "wrap", gap: 12 }}>
+    <div className="col" style={{ gap: 8, flex: 1 }}>
       <div className="wrap-gap">
         <button className={"chip" + (cat === "all" ? " active" : "")} onClick={() => setCat("all")}>ทุกหมวด</button>
         {categories.map((c) => (
@@ -66,7 +95,13 @@ export function StockPage({ items, search, openItem }) {
 
   return (
     <div className="page">
-      <Filters items={items} cat={cat} setCat={setCat} status={status} setStatus={setStatus} />
+      <div className="spread" style={{ marginBottom: 16, flexWrap: "wrap", gap: 12, alignItems: "flex-end" }}>
+        <Filters items={items} cat={cat} setCat={setCat} status={status} setStatus={setStatus} />
+        <button className="btn btn-soft btn-sm" style={{ flex: "0 0 auto", alignSelf: "flex-end" }}
+          onClick={() => exportStockCSV(rows, catOf)}>
+          <Icon name="download" size={15} />ส่งออก CSV ({rows.length})
+        </button>
+      </div>
       <div className="card fade-up" style={{ overflow: "hidden" }}>
         <div className="table-wrap">
           <table className="tbl">
